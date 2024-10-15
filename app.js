@@ -1,55 +1,55 @@
-// Select the button and output elements
-const scanButton = document.getElementById('scan-button');
-const output = document.getElementById('output');
-
-// Function to start NFC scan
 async function scanNFC() {
   try {
-    // Check if the browser supports Web NFC
     if ('NDEFReader' in window) {
       const ndef = new NDEFReader();
-      
-      // Start NFC reading session
       await ndef.scan();
-      
-      output.innerHTML = 'Hold your device close to an NFC tag...';
 
-      // Event listener for when an NFC message is read
+      document.getElementById('status').innerText = 'Hold your device close to an NFC tag...';
+
       ndef.onreading = (event) => {
         const { serialNumber } = event;
-        output.innerHTML = `NFC Tag Detected! <br> Serial Number: ${serialNumber}`;
-        
-        // Process each record
+        const data = {
+          serialNumber: serialNumber,
+          text: null
+        };
+
         for (const record of event.message.records) {
-          switch (record.recordType) {
-            case "text":
-              const textDecoder = new TextDecoder();
-              const text = textDecoder.decode(record.data);
-              output.innerHTML += `<br> Text: ${text}`;
-              break;
-            case "url":
-              const urlDecoder = new TextDecoder();
-              const url = urlDecoder.decode(record.data);
-              output.innerHTML += `<br> URL: <a href="${url}" target="_blank">${url}</a>`;
-              break;
-            default:
-              output.innerHTML += `<br> Unknown record type: ${record.recordType}`;
+          if (record.recordType === "text") {
+            const textDecoder = new TextDecoder();
+            data.text = textDecoder.decode(record.data);
           }
         }
-      };
 
-      ndef.onreadingerror = () => {
-        output.innerHTML = 'Error reading NFC tag. Please try again.';
+        sendDataToPowerAutomate(data);
       };
-
     } else {
-      output.innerHTML = "Web NFC API is not supported by this browser.";
+      alert('Web NFC API not supported in this browser.');
     }
   } catch (error) {
-    console.error('Error:', error);
-    output.innerHTML = 'Something went wrong: ' + error;
+    console.error('NFC scan error:', error);
   }
 }
 
-// Add click event listener to the button
-scanButton.addEventListener('click', scanNFC);
+async function sendDataToPowerAutomate(data) {
+  const url = 'https://prod-xyz.powerautomate.com/...'; // Replace with your Power Automate Flow URL
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (response.ok) {
+      console.log('Data sent to Power Automate successfully');
+    } else {
+      console.error('Error sending data to Power Automate:', response.status);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Automatically start scanning NFC when the page loads
+scanNFC();
